@@ -12,9 +12,9 @@ if [ -L "drivers/kernelsu" ]; then
     mkdir -p drivers/kernelsu
     echo "# KernelSU" > drivers/kernelsu/Kconfig
     echo "obj-" > drivers/kernelsu/Makefile
-    echo "[1/10] Fixed KernelSU symlink"
+    echo "[1/11] Fixed KernelSU symlink"
 else
-    echo "[1/10] KernelSU OK"
+    echo "[1/11] KernelSU OK"
 fi
 
 # 2. Create missing netfilter UAPI headers
@@ -54,45 +54,45 @@ cat > include/uapi/linux/netfilter/xt_dscp.h << 'HEADER'
 struct xt_dscp_info { __u8 dscp; __u8 invert; };
 #endif
 HEADER
-echo "[2/10] Created missing netfilter headers"
+echo "[2/11] Created missing netfilter headers"
 
 # 3. Remove missing netfilter source files from Makefile
 sed -i '/xt_dscp/d; /xt_hl/d; /xt_rateest/d; /xt_tcpmss/d' net/netfilter/Makefile
-echo "[3/10] Removed missing netfilter modules"
+echo "[3/11] Removed missing netfilter modules"
 
 # 4. Fix PLL trace include path
 if [ -f "techpack/display/pll/pll_trace.h" ]; then
     sed -i 's|#define TRACE_INCLUDE_PATH .|#define TRACE_INCLUDE_PATH ../../../techpack/display/pll|' techpack/display/pll/pll_trace.h
     mkdir -p include/trace
     cp techpack/display/pll/pll_trace.h include/trace/pll_trace.h
-    echo "[4/10] Fixed PLL trace include path"
+    echo "[4/11] Fixed PLL trace include path"
 else
-    echo "[4/10] PLL trace OK"
+    echo "[4/11] PLL trace OK"
 fi
 
 # 5. Fix clk-qcom trace include path
 if [ -f "drivers/clk/qcom/trace.h" ]; then
     sed -i 's|#define TRACE_INCLUDE_PATH .|#define TRACE_INCLUDE_PATH ../../../drivers/clk/qcom|' drivers/clk/qcom/trace.h
     cp drivers/clk/qcom/trace.h include/trace/clk_qcom_trace.h
-    echo "[5/10] Fixed clk-qcom trace include path"
+    echo "[5/11] Fixed clk-qcom trace include path"
 else
-    echo "[5/10] clk-qcom trace OK"
+    echo "[5/11] clk-qcom trace OK"
 fi
 
 # 6. Fix IPA driver copy_from_user
 if [ -f "drivers/platform/msm/ipa/ipa_v3/ipa_hw_stats.c" ]; then
     sed -i 's/missing = copy_from_user(dbg_buff, ubuf, count);/missing = copy_from_user(dbg_buff, ubuf, min(count, sizeof(dbg_buff) - 1));/' drivers/platform/msm/ipa/ipa_v3/ipa_hw_stats.c
-    echo "[6/10] Fixed IPA driver"
+    echo "[6/11] Fixed IPA driver"
 else
-    echo "[6/10] IPA driver OK"
+    echo "[6/11] IPA driver OK"
 fi
 
 # 7. Fix SELinux .bss.rtic relocation
 if [ -f "arch/arm64/kernel/vmlinux.lds.S" ]; then
     sed -i 's/KEEP(*(.bss.rtic))/\/\* .bss.rtic merged into .bss \*\//' arch/arm64/kernel/vmlinux.lds.S
-    echo "[7/10] Fixed SELinux .bss.rtic"
+    echo "[7/11] Fixed SELinux .bss.rtic"
 else
-    echo "[7/10] vmlinux.lds.S OK"
+    echo "[7/11] vmlinux.lds.S OK"
 fi
 
 # 8. Fix cam_cci include path
@@ -101,16 +101,16 @@ if [ -f "$CCI_MAKEFILE" ]; then
     if ! grep -q "cam_sensor_module/cam_cci" "$CCI_MAKEFILE"; then
         sed -i '1a ccflags-y += -I$(srctree)/techpack/camera/drivers/cam_sensor_module/cam_cci' "$CCI_MAKEFILE"
     fi
-    echo "[8/10] Fixed cam_cci include path"
+    echo "[8/11] Fixed cam_cci include path"
 else
-    echo "[8/10] cam_cci OK"
+    echo "[8/11] cam_cci OK"
 fi
 
 # 9. Create dummy touchscreen pramboot
 PRAMBOOT="drivers/input/touchscreen/focaltech_touch/include/pramboot/FT8719_Pramboot_V0.5_20171221.i"
 mkdir -p "$(dirname "$PRAMBOOT")"
 touch "$PRAMBOOT"
-echo "[9/10] Created dummy pramboot"
+echo "[9/11] Created dummy pramboot"
 
 # 10. Add STUNE_ASSIST and DYNAMIC_STUNE_BOOST to defconfig
 DEFCONFIG="arch/arm64/configs/vendor/lito-perf_defconfig"
@@ -121,9 +121,21 @@ if [ -f "$DEFCONFIG" ]; then
     if ! grep -q "CONFIG_DYNAMIC_STUNE_BOOST" "$DEFCONFIG"; then
         echo "CONFIG_DYNAMIC_STUNE_BOOST=y" >> "$DEFCONFIG"
     fi
-    echo "[10/10] Added STUNE_ASSIST and DYNAMIC_STUNE_BOOST"
+    echo "[10/11] Added STUNE_ASSIST and DYNAMIC_STUNE_BOOST"
 else
-    echo "[10/10] defconfig not found, skipping"
+    echo "[10/11] defconfig not found, skipping"
+fi
+
+# 11. Fix CPU_MASK empty values in defconfig (must be done BEFORE config generation)
+if [ -f "$DEFCONFIG" ]; then
+    if ! grep -q "CONFIG_LITTLE_CPU_MASK" "$DEFCONFIG"; then
+        echo "CONFIG_LITTLE_CPU_MASK=63" >> "$DEFCONFIG"
+        echo "CONFIG_BIG_CPU_MASK=192" >> "$DEFCONFIG"
+        echo "CONFIG_PRIME_CPU_MASK=128" >> "$DEFCONFIG"
+    fi
+    echo "[11/11] Added CPU_MASK defaults to defconfig"
+else
+    echo "[11/11] defconfig not found, skipping"
 fi
 
 echo "=== All SM7250 picasso fixes applied ==="
