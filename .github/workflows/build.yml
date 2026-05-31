@@ -621,10 +621,16 @@ jobs:
         if: inputs.soc == 'sm7250'
         run: |
           cd ${{ inputs.soc }} || exit 1
-          sed -i 's/^CONFIG_LITTLE_CPU_MASK=$/CONFIG_LITTLE_CPU_MASK=63/' out/.config
-          sed -i 's/^CONFIG_BIG_CPU_MASK=$/CONFIG_BIG_CPU_MASK=192/' out/.config
-          sed -i 's/^CONFIG_PRIME_CPU_MASK=$/CONFIG_PRIME_CPU_MASK=128/' out/.config
-          make O=out olddefconfig
+          # Remove any existing CPU_MASK entries to avoid duplicates
+          sed -i '/^CONFIG_LITTLE_CPU_MASK/d' out/.config
+          sed -i '/^CONFIG_BIG_CPU_MASK/d' out/.config
+          sed -i '/^CONFIG_PRIME_CPU_MASK/d' out/.config
+          # Force set correct CPU_MASK values for SM7250 (6L+2B) picasso
+          echo "CONFIG_LITTLE_CPU_MASK=63" >> out/.config
+          echo "CONFIG_BIG_CPU_MASK=192" >> out/.config
+          echo "CONFIG_PRIME_CPU_MASK=128" >> out/.config
+          # Pipe empty input to handle (NEW) config prompts from DroidSpaces
+          yes "" | make O=out olddefconfig
 
       - name: Build Kernel Image
         run: |
